@@ -4,9 +4,9 @@ import { expect } from '@playwright/test';
 import StickerSheet from '../../../config/playwright/setup/utils/Stickersheet';
 import { test, ComponentsPage } from '../../../config/playwright/setup';
 import type { PopoverPlacement, PopoverTrigger } from './popover.types';
-import type { ModalContainerColor, ModalContainerRole } from '../modalcontainer/modalcontainer.types';
+import type { ModalContainerColor } from '../modalcontainer/modalcontainer.types';
 import { DEFAULTS, POPOVER_PLACEMENT, TRIGGER } from './popover.constants';
-import { COLOR, ROLE } from '../modalcontainer/modalcontainer.constants';
+import { COLOR } from '../modalcontainer/modalcontainer.constants';
 
 type SetupOptions = {
   componentsPage: ComponentsPage;
@@ -15,7 +15,7 @@ type SetupOptions = {
   trigger?: PopoverTrigger;
   placement?: PopoverPlacement;
   delay?: string;
-  setIndex?: number;
+  zIndex?: number;
   visible?: boolean;
   offset?: boolean;
   interactive?: boolean;
@@ -31,10 +31,10 @@ type SetupOptions = {
   hideOnEscape?: boolean;
   hideOnOutsideClick?: boolean;
   focusBackToTrigger?: boolean;
-  ariaLabel?: string;
-  ariaLabelledby?: string;
-  ariaDescribedby?: string;
-  role?: ModalContainerRole;
+  dataAriaLabel?: string;
+  dataAriaLabelledby?: string;
+  dataAriaDescribedby?: string;
+  dataRole?: HTMLElement['role'];
   children?: any;
 };
 
@@ -43,14 +43,14 @@ const setup = async (args: SetupOptions) => {
   await componentsPage.mount({
     html: `
     <div id="wrapper">
-      <mdc-button id="${restArgs.triggerID}">Click Me!</mdc-button>
+      <mdc-button id="${restArgs.triggerID}" aria-label="Trigger Button of Popover">Click Me!</mdc-button>
       <mdc-popover
         ${restArgs.id ? `id="${restArgs.id}"` : ''}
         ${restArgs.triggerID ? `triggerID="${restArgs.triggerID}"` : ''}
         ${restArgs.trigger ? `trigger="${restArgs.trigger}"` : ''}
         ${restArgs.placement ? `placement="${restArgs.placement}"` : ''}
         ${restArgs.delay ? `delay="${restArgs.delay}"` : ''}
-        ${restArgs.setIndex ? `setIndex="${restArgs.setIndex}"` : ''}
+        ${restArgs.zIndex ? `z-index="${restArgs.zIndex}"` : ''}
         ${restArgs.visible ? 'visible' : ''}
         ${restArgs.offset ? `offset="${restArgs.offset}"` : ''}
         ${restArgs.interactive ? 'interactive' : ''}
@@ -66,10 +66,10 @@ const setup = async (args: SetupOptions) => {
         ${restArgs.hideOnEscape ? `hide-on-escape="${restArgs.hideOnEscape}"` : ''}
         ${restArgs.hideOnOutsideClick ? `hide-on-outside-click="${restArgs.hideOnOutsideClick}"` : ''}
         ${restArgs.focusBackToTrigger ? `focus-back-to-trigger="${restArgs.focusBackToTrigger}"` : ''}
-        ${restArgs.ariaLabel ? `aria-label="${restArgs.ariaLabel}"` : ''}
-        ${restArgs.ariaLabelledby ? `aria-labelledby="${restArgs.ariaLabelledby}"` : ''}
-        ${restArgs.ariaDescribedby ? `aria-describedby="${restArgs.ariaDescribedby}"` : ''}
-        ${restArgs.role ? `role="${restArgs.role}"` : ''}
+        ${restArgs.dataAriaLabel ? `data-aria-label="${restArgs.dataAriaLabel}"` : ''}
+        ${restArgs.dataAriaLabelledby ? `data-aria-labelledby="${restArgs.dataAriaLabelledby}"` : ''}
+        ${restArgs.dataAriaDescribedby ? `data-aria-describedby="${restArgs.dataAriaDescribedby}"` : ''}
+        ${restArgs.dataRole ? `data-role="${restArgs.dataRole}"` : ''}
       >
         ${restArgs.children}
       </mdc-popover>
@@ -80,11 +80,12 @@ const setup = async (args: SetupOptions) => {
   const wrapper = componentsPage.page.locator('div#wrapper');
   await wrapper.waitFor();
   const popover = componentsPage.page.locator(`#${restArgs.id}`);
-  return popover;
+  const triggerButton = componentsPage.page.locator(`#${restArgs.triggerID}`);
+  return { popover, triggerButton };
 };
 
 const attributeTestCases = async (componentsPage: ComponentsPage) => {
-  const popover = await setup({
+  const { popover, triggerButton } = await setup({
     componentsPage,
     id: 'popover',
     triggerID: 'trigger-button',
@@ -97,7 +98,7 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
   await test.step('default attributes for popover', async () => {
     await expect(popover).toHaveAttribute('placement', DEFAULTS.PLACEMENT);
     await expect(popover).toHaveAttribute('delay', DEFAULTS.DELAY);
-    await expect(popover).toHaveAttribute('set-index', DEFAULTS.SET_INDEX.toString());
+    await expect(popover).toHaveAttribute('z-index', DEFAULTS.Z_INDEX.toString());
     await expect(popover).not.toHaveAttribute('visible');
     await expect(popover).toHaveAttribute('offset', DEFAULTS.OFFSET.toString());
     await expect(popover).not.toHaveAttribute('interactive');
@@ -113,10 +114,20 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
     await expect(popover).not.toHaveAttribute('hide-on-escape');
     await expect(popover).not.toHaveAttribute('hide-on-outside-click');
     await expect(popover).not.toHaveAttribute('focus-back-to-trigger');
-    await expect(popover).not.toHaveAttribute('aria-label');
-    await expect(popover).not.toHaveAttribute('aria-labelledby');
-    await expect(popover).not.toHaveAttribute('aria-describedby');
-    await expect(popover).toHaveAttribute('role', DEFAULTS.ROLE);
+    await expect(popover).not.toHaveAttribute('data-aria-label');
+    await expect(popover).not.toHaveAttribute('data-aria-labelledby');
+    await expect(popover).not.toHaveAttribute('data-aria-describedby');
+    await expect(popover).toHaveAttribute('data-role', DEFAULTS.ROLE);
+  });
+
+  /**
+   * INTERACTIVE POPOVER DEFAULTS ACCESSIBILITY ATTRIBUTES
+   */
+  await test.step('Defaults accessibility attributes with interactive popover', async () => {
+    await componentsPage.setAttributes(popover, { interactive: '' });
+    await expect(popover).toHaveAttribute('interactive');
+    await expect(popover).toHaveAttribute('data-aria-label', 'Trigger Button of Popover');
+    await expect(popover).toHaveAttribute('data-aria-labelledby', 'trigger-button');
   });
 
   /**
@@ -127,7 +138,7 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
       placement: POPOVER_PLACEMENT.TOP,
       trigger: TRIGGER.MANUAL,
       delay: '100,100',
-      'set-index': '2000',
+      'z-index': '2000',
       visible: '',
       offset: '8',
       interactive: '',
@@ -143,14 +154,14 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
       'hide-on-escape': '',
       'hide-on-outside-click': '',
       'focus-back-to-trigger': '',
-      'aria-label': 'popover',
-      'aria-labelledby': 'popover-label',
-      'aria-describedby': 'popover-description',
-      role: ROLE.ALERT_DIALOG,
+      'data-aria-label': 'popover',
+      'data-aria-labelledby': 'popover-label',
+      'data-aria-describedby': 'popover-description',
+      'data-role': DEFAULTS.ROLE,
     });
     await expect(popover).toHaveAttribute('placement', POPOVER_PLACEMENT.TOP);
     await expect(popover).toHaveAttribute('delay', '100,100');
-    await expect(popover).toHaveAttribute('set-index', '2000');
+    await expect(popover).toHaveAttribute('z-index', '2000');
     await expect(popover).toHaveAttribute('visible');
     await expect(popover).toHaveAttribute('offset', '8');
     await expect(popover).toHaveAttribute('interactive');
@@ -166,10 +177,12 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
     await expect(popover).toHaveAttribute('hide-on-escape');
     await expect(popover).toHaveAttribute('hide-on-outside-click');
     await expect(popover).toHaveAttribute('focus-back-to-trigger');
-    await expect(popover).toHaveAttribute('aria-label', 'popover');
-    await expect(popover).toHaveAttribute('aria-labelledby', 'popover-label');
-    await expect(popover).toHaveAttribute('aria-describedby', 'popover-description');
-    await expect(popover).toHaveAttribute('role', ROLE.ALERT_DIALOG);
+    await expect(popover).toHaveAttribute('data-aria-label', 'popover');
+    await expect(popover).toHaveAttribute('data-aria-labelledby', 'popover-label');
+    await expect(popover).toHaveAttribute('data-aria-describedby', 'popover-description');
+    await expect(popover).toHaveAttribute('data-role', DEFAULTS.ROLE);
+    await expect(triggerButton).toHaveAttribute('aria-expanded', 'true');
+    await expect(triggerButton).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
   /**
@@ -227,13 +240,11 @@ const attributeTestCases = async (componentsPage: ComponentsPage) => {
         trigger: 'invalid',
         delay: 'invalid',
         color: 'invalid',
-        role: 'invalid',
       });
       await expect(popover).toHaveAttribute('placement', DEFAULTS.PLACEMENT);
       await expect(popover).toHaveAttribute('trigger', DEFAULTS.TRIGGER);
       await expect(popover).toHaveAttribute('delay', DEFAULTS.DELAY);
       await expect(popover).toHaveAttribute('color', DEFAULTS.COLOR);
-      await expect(popover).toHaveAttribute('role', DEFAULTS.ROLE);
     });
   });
 };
@@ -260,8 +271,6 @@ const visualRegressionTestCases = async (componentsPage: ComponentsPage) => {
       <mdc-text type="body-small-regular">This is a placeholder. Swap me with your local component.</mdc-text>
     </div>
   `);
-
-
 };
 
 test.use({ viewport: { width: 1000, height: 1000 } });
